@@ -593,6 +593,181 @@ body{
     font-size:16px;
   }
 }
+
+/* ===== COMPACT FIXED CHECKOUT BAR ===== */
+.donation-box{
+  position:fixed;
+  left:50%;
+  right:auto;
+  bottom:12px;
+  transform:translateX(-50%);
+  width:min(1040px,calc(100% - 24px));
+  max-width:none;
+  margin:0;
+  padding:12px 14px;
+  border:2px solid var(--teal);
+  border-radius:16px;
+  background:rgba(3,18,24,.985);
+  box-shadow:0 12px 34px rgba(0,0,0,.62);
+  z-index:9999;
+  text-align:left;
+}
+
+.donation-box.active{
+  display:grid;
+  grid-template-columns:130px minmax(180px,1fr) minmax(300px,1.7fr) 260px;
+  grid-template-areas:
+    "summary detail donor pay";
+  gap:14px;
+  align-items:center;
+}
+
+.selected-label{
+  font-size:10px;
+  letter-spacing:1.6px;
+}
+
+.donation-amount{
+  margin:2px 0 0;
+  font-size:34px;
+  line-height:1;
+}
+
+.selected-count{
+  margin:4px 0 0;
+  font-size:12px;
+  line-height:1.2;
+}
+
+.donation-detail{
+  grid-area:detail;
+  margin:0;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.donation-box > .selected-label,
+.donation-box > .donation-amount,
+.donation-box > .selected-count{
+  grid-area:summary;
+}
+
+.donation-box > .selected-label{
+  align-self:start;
+}
+
+.donation-box > .donation-amount{
+  align-self:center;
+  margin-top:17px;
+}
+
+.donation-box > .selected-count{
+  align-self:end;
+}
+
+.donor-form{
+  grid-area:donor;
+  margin:0;
+  padding:10px;
+  border-radius:11px;
+}
+
+.donor-form-label{
+  margin-bottom:5px;
+  font-size:10px;
+  letter-spacing:1.2px;
+}
+
+.donor-name-input{
+  padding:9px 10px;
+  font-size:14px;
+}
+
+.anonymous-row{
+  margin-top:7px;
+  gap:7px;
+  font-size:12px;
+}
+
+.anonymous-row input{
+  width:16px;
+  height:16px;
+}
+
+.donor-help{
+  display:none;
+}
+
+.pay-button{
+  grid-area:pay;
+  padding:13px 12px;
+  font-size:15px;
+}
+
+.checkout-status{
+  grid-area:pay;
+  margin-top:58px;
+  font-size:11px;
+}
+
+.cancel-button{
+  grid-area:pay;
+  align-self:end;
+  margin-top:74px;
+  font-size:11px;
+}
+
+/* Keep content visible above the fixed bar */
+#legends-fundraiser{
+  padding-bottom:190px;
+}
+
+@media(max-width:850px){
+  .donation-box.active{
+    grid-template-columns:100px 1fr;
+    grid-template-areas:
+      "summary detail"
+      "donor donor"
+      "pay pay";
+    gap:9px 12px;
+  }
+
+  .donation-box{
+    bottom:8px;
+    width:calc(100% - 16px);
+    padding:10px;
+    max-height:46vh;
+    overflow-y:auto;
+  }
+
+  .donation-amount{
+    font-size:28px;
+  }
+
+  .donor-form{
+    padding:8px;
+  }
+
+  .pay-button{
+    padding:12px;
+  }
+
+  .checkout-status{
+    grid-area:pay;
+    margin:48px 0 0;
+    text-align:center;
+  }
+
+  .cancel-button{
+    grid-area:pay;
+    margin:62px auto 0;
+  }
+
+  #legends-fundraiser{
+    padding-bottom:260px;
+  }
+}
+
 </style>
 </head>
 

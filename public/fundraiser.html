@@ -1940,7 +1940,7 @@ function restoreSelectedPlayer(){
 }
 
 
-function handlePaymentReturn(){
+async function handlePaymentReturn(){
 
   const params =
     new URLSearchParams(
@@ -1950,37 +1950,133 @@ function handlePaymentReturn(){
   const payment =
     params.get("payment");
 
-  if(
-    payment === "success"
-  ){
+  const sessionId =
+    params.get("session_id");
 
-    paymentBanner.className =
-      "payment-banner success";
-
-    paymentBanner.textContent =
-      "Payment received! Your fundraiser has been updated.";
-  }
-
-  if(
-    payment === "cancelled"
-  ){
+  if(payment === "cancelled"){
 
     paymentBanner.className =
       "payment-banner cancelled";
 
     paymentBanner.textContent =
       "Payment was cancelled. Your baseballs were not marked sold.";
+
+    return;
+  }
+
+  if(payment !== "success"){
+    return;
+  }
+
+  if(!sessionId){
+
+    paymentBanner.className =
+      "payment-banner cancelled";
+
+    paymentBanner.textContent =
+      "Payment returned without a Stripe session ID. Please contact the team.";
+
+    return;
+  }
+
+  paymentBanner.className =
+    "payment-banner success";
+
+  paymentBanner.textContent =
+    "Payment received. Confirming your baseballs...";
+
+  try{
+
+    const response =
+      await fetch(
+        "/api/verify-payment?session_id=" +
+        encodeURIComponent(sessionId),
+        {
+          method:"GET",
+          cache:"no-store",
+          headers:{
+            "Accept":"application/json"
+          }
+        }
+      );
+
+    const text =
+      await response.text();
+
+    let data;
+
+    try{
+      data = JSON.parse(text);
+    }catch(error){
+      throw new Error(
+        "Payment verification returned invalid data."
+      );
+    }
+
+    if(
+      !response.ok ||
+      data.success !== true
+    ){
+      throw new Error(
+        data && data.error
+          ? data.error
+          : "Unable to verify payment."
+      );
+    }
+
+    paymentBanner.className =
+      "payment-banner success";
+
+    paymentBanner.textContent =
+      "Payment confirmed! Your baseballs have been marked sold.";
+
+    const cleanUrl =
+      new URL(window.location.href);
+
+    cleanUrl.searchParams.delete("payment");
+    cleanUrl.searchParams.delete("session_id");
+
+    window.history.replaceState(
+      {},
+      "",
+      cleanUrl.pathname +
+      (cleanUrl.search ? cleanUrl.search : "")
+    );
+
+  }catch(error){
+
+    console.error(
+      "Payment verification error:",
+      error
+    );
+
+    paymentBanner.className =
+      "payment-banner cancelled";
+
+    paymentBanner.textContent =
+      "Payment was received, but the baseball update could not be confirmed yet: " +
+      (
+        error && error.message
+          ? error.message
+          : "Unknown error"
+      );
   }
 }
 
 
-restoreSelectedPlayer();
+async function initializeFundraiser(){
 
-showSelectedPlayerImmediately();
+  restoreSelectedPlayer();
 
-handlePaymentReturn();
+  showSelectedPlayerImmediately();
 
-loadFundraiser();
+  await handlePaymentReturn();
+
+  await loadFundraiser();
+}
+
+
+initializeFundraiser();
 
 </script>
 

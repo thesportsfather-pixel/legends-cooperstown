@@ -50,12 +50,13 @@ body{
   margin-bottom:28px;
 }
 
-.legends-kicker{
-  color:var(--teal);
-  font-size:15px;
-  font-weight:900;
-  letter-spacing:4px;
-  text-transform:uppercase;
+.legends-logo{
+  display:block;
+  width:min(420px,85%);
+  height:auto;
+  margin:0 auto 22px;
+  object-fit:contain;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.35));
 }
 
 .legends-title{
@@ -598,14 +599,18 @@ body{
 <div id="legends-fundraiser">
 
   <div class="legends-header">
-    <div class="legends-kicker">
-      Legends Baseball
-    </div>
+
+    <img
+      src="/legends-logo.png"
+      alt="Legends Baseball"
+      class="legends-logo"
+    >
 
     <div class="legends-title">
       Road To<br>
       <span>Cooperstown</span>
     </div>
+
   </div>
 
   <div class="player-select-card">

@@ -33,7 +33,12 @@ export async function onRequestPost({ request, env }) {
       !env.SUPABASE_SERVICE_ROLE_KEY ||
       !env.STRIPE_SECRET_KEY
     ) {
-      return json({ error: "Missing server configuration." }, 500);
+      return json(
+        {
+          error: "Missing server configuration.",
+        },
+        500
+      );
     }
 
     const body = await request.json();
@@ -51,7 +56,9 @@ export async function onRequestPost({ request, env }) {
       baseballs.length === 0
     ) {
       return json(
-        { error: "A player and at least one baseball are required." },
+        {
+          error: "A player and at least one baseball are required.",
+        },
         400
       );
     }
@@ -78,7 +85,9 @@ export async function onRequestPost({ request, env }) {
 
       if (cleanedDonorName.length > 80) {
         return json(
-          { error: "Display name must be 80 characters or fewer." },
+          {
+            error: "Display name must be 80 characters or fewer.",
+          },
           400
         );
       }
@@ -105,7 +114,12 @@ export async function onRequestPost({ request, env }) {
       selectedNumbers.length === 0 ||
       selectedNumbers.length !== baseballs.length
     ) {
-      return json({ error: "Invalid baseball selection." }, 400);
+      return json(
+        {
+          error: "Invalid baseball selection.",
+        },
+        400
+      );
     }
 
     const players = await supabaseGet(
@@ -118,7 +132,12 @@ export async function onRequestPost({ request, env }) {
     const player = players[0];
 
     if (!player) {
-      return json({ error: "Player not found." }, 404);
+      return json(
+        {
+          error: "Player not found.",
+        },
+        404
+      );
     }
 
     const inList = selectedNumbers.join(",");
@@ -144,7 +163,7 @@ export async function onRequestPost({ request, env }) {
       (ball) => ball.status === "sold"
     );
 
-    if (unavailable.length) {
+    if (unavailable.length > 0) {
       return json(
         {
           error:
@@ -157,12 +176,18 @@ export async function onRequestPost({ request, env }) {
     }
 
     const totalCents = rows.reduce(
-      (sum, ball) => sum + Number(ball.amount_cents || 0),
+      (sum, ball) =>
+        sum + Number(ball.amount_cents || 0),
       0
     );
 
     if (totalCents <= 0) {
-      return json({ error: "Invalid donation total." }, 400);
+      return json(
+        {
+          error: "Invalid donation total.",
+        },
+        400
+      );
     }
 
     const origin = new URL(request.url).origin;
@@ -170,53 +195,86 @@ export async function onRequestPost({ request, env }) {
     const form = new URLSearchParams();
 
     form.set("mode", "payment");
-    form.set("line_items[0][price_data][currency]", "usd");
+
+    form.set(
+      "line_items[0][price_data][currency]",
+      "usd"
+    );
+
     form.set(
       "line_items[0][price_data][unit_amount]",
       String(totalCents)
     );
+
     form.set(
       "line_items[0][price_data][product_data][name]",
       "Legends Road to Cooperstown Fundraiser"
     );
+
     form.set(
       "line_items[0][price_data][product_data][description]",
       `${player.player_name} — Baseballs #${selectedNumbers.join(", #")}`
     );
-    form.set("line_items[0][quantity]", "1");
+
+    form.set(
+      "line_items[0][quantity]",
+      "1"
+    );
 
     form.set(
       "success_url",
-      `${origin}/?player=${encodeURIComponent(
+      `${origin}/fundraiser.html?player=${encodeURIComponent(
         player.player_key
       )}&payment=success&session_id={CHECKOUT_SESSION_ID}`
     );
 
     form.set(
       "cancel_url",
-      `${origin}/?player=${encodeURIComponent(
+      `${origin}/fundraiser.html?player=${encodeURIComponent(
         player.player_key
       )}&payment=cancelled`
     );
 
-    form.set("customer_creation", "always");
+    form.set(
+      "customer_creation",
+      "always"
+    );
 
-    form.set("metadata[team_key]", "legends-cooperstown");
-    form.set("metadata[player_key]", player.player_key);
-    form.set("metadata[player_id]", String(player.id));
-    form.set("metadata[player_name]", player.player_name);
+    form.set(
+      "metadata[team_key]",
+      "legends-cooperstown"
+    );
+
+    form.set(
+      "metadata[player_key]",
+      player.player_key
+    );
+
+    form.set(
+      "metadata[player_id]",
+      String(player.id)
+    );
+
+    form.set(
+      "metadata[player_name]",
+      player.player_name
+    );
+
     form.set(
       "metadata[baseball_numbers]",
       selectedNumbers.join(",")
     );
+
     form.set(
       "metadata[donation_total_cents]",
       String(totalCents)
     );
+
     form.set(
       "metadata[donor_name]",
       displayDonorName
     );
+
     form.set(
       "metadata[anonymous]",
       isAnonymous ? "true" : "false"
@@ -226,26 +284,32 @@ export async function onRequestPost({ request, env }) {
       "payment_intent_data[metadata][team_key]",
       "legends-cooperstown"
     );
+
     form.set(
       "payment_intent_data[metadata][player_key]",
       player.player_key
     );
+
     form.set(
       "payment_intent_data[metadata][player_id]",
       String(player.id)
     );
+
     form.set(
       "payment_intent_data[metadata][player_name]",
       player.player_name
     );
+
     form.set(
       "payment_intent_data[metadata][baseball_numbers]",
       selectedNumbers.join(",")
     );
+
     form.set(
       "payment_intent_data[metadata][donor_name]",
       displayDonorName
     );
+
     form.set(
       "payment_intent_data[metadata][anonymous]",
       isAnonymous ? "true" : "false"
@@ -292,7 +356,9 @@ export async function onRequestPost({ request, env }) {
 
     if (!session.url) {
       return json(
-        { error: "Stripe did not return a checkout URL." },
+        {
+          error: "Stripe did not return a checkout URL.",
+        },
         500
       );
     }
@@ -306,7 +372,10 @@ export async function onRequestPost({ request, env }) {
     });
 
   } catch (error) {
-    console.error("Create checkout error:", error);
+    console.error(
+      "Create checkout error:",
+      error
+    );
 
     return json(
       {

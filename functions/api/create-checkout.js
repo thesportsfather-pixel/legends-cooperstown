@@ -50,8 +50,7 @@ export async function onRequestPost({ request, env }) {
         ? body.playerKey.trim()
         : "";
 
-    const anonymous =
-      body.anonymous === true;
+    const anonymous = body.anonymous === true;
 
     let donorName =
       typeof body.donorName === "string"
@@ -62,59 +61,75 @@ export async function onRequestPost({ request, env }) {
       donorName = "Anonymous";
     }
 
-    if (
-      !anonymous &&
-      donorName.length < 2
-    ) {
+    if (!anonymous && donorName.length < 2) {
       return json(
         {
           success: false,
-          error:
-            "Please enter a donor name or choose Anonymous.",
+          error: "Please enter a donor name or choose Anonymous.",
         },
         400
       );
     }
 
-    const baseballNumbers =
-      Array.from(
-        new Set(
-          (
-            Array.isArray(body.baseballs)
-              ? body.baseballs
-              : []
+    const baseballNumbers = Array.from(
+      new Set(
+        (Array.isArray(body.baseballs) ? body.baseballs : [])
+          .map(Number)
+          .filter(
+            (number) =>
+              Number.isInteger(number) &&
+              number >= 1 &&
+              number <= 100
           )
-            .map(Number)
-            .filter(
-              (number) =>
-                Number.isInteger(number) &&
-                number >= 1 &&
-                number <= 100
-            )
-        )
-      ).sort((a, b) => a - b);
+      )
+    ).sort((a, b) => a - b);
 
-    if (
-      !playerKey ||
-      !baseballNumbers.length
-    ) {
+    if (!playerKey || !baseballNumbers.length) {
       return json(
         {
           success: false,
-          error:
-            "A player and at least one baseball are required.",
+          error: "A player and at least one baseball are required.",
         },
         400
       );
     }
 
-    const players =
-      await supabaseGet(
-        env,
-        `players?team_key=eq.legends-cooperstown&player_key=eq.${encodeURIComponent(
-          playerKey
-        )}&select=id,player_key,player_name,player_number&limit=1`
+    /*
+     * STEP 1
+     * Find the Legends team.
+     *
+     * players does NOT have team_key.
+     * teams has team_key.
+     */
+    const teams = await supabaseGet(
+      env,
+      `teams?team_key=eq.legends-cooperstown&select=id,team_key&limit=1`
+    );
+
+    if (!teams.length) {
+      return json(
+        {
+          success: false,
+          error: "Legends team not found.",
+        },
+        404
       );
+    }
+
+    const team = teams[0];
+
+    /*
+     * STEP 2
+     * Find the player using players.team_id.
+     */
+    const players = await supabaseGet(
+      env,
+      `players?team_id=eq.${encodeURIComponent(
+        team.id
+      )}&player_key=eq.${encodeURIComponent(
+        playerKey
+      )}&select=id,team_id,player_key,player_name,player_number&limit=1`
+    );
 
     if (!players.length) {
       return json(
@@ -126,93 +141,78 @@ export async function onRequestPost({ request, env }) {
       );
     }
 
-    const player =
-      players[0];
+    const player = players[0];
 
-    const baseballs =
-      await supabaseGet(
-        env,
-        `baseballs?player_id=eq.${encodeURIComponent(
-          player.id
-        )}&ball_number=in.(${baseballNumbers.join(
-          ","
-        )})&select=ball_number,amount_cents,status`
-      );
+    /*
+     * STEP 3
+     * Get selected baseballs.
+     */
+    const baseballs = await supabaseGet(
+      env,
+      `baseballs?player_id=eq.${encodeURIComponent(
+        player.id
+      )}&ball_number=in.(${baseballNumbers.join(
+        ","
+      )})&select=ball_number,amount_cents,status`
+    );
 
-    if (
-      baseballs.length !==
-      baseballNumbers.length
-    ) {
+    if (baseballs.length !== baseballNumbers.length) {
       return json(
         {
           success: false,
-          error:
-            "One or more selected baseballs could not be found.",
+          error: "One or more selected baseballs could not be found.",
         },
         409
       );
     }
 
-    const unavailable =
-      baseballs.filter(
-        (ball) =>
-          ball.status !== "available"
-      );
+    const unavailable = baseballs.filter(
+      (ball) => ball.status !== "available"
+    );
 
     if (unavailable.length) {
       return json(
         {
           success: false,
-          error:
-            `Baseball${
-              unavailable.length === 1 ? "" : "s"
-            } #${unavailable
-              .map(
-                (ball) =>
-                  ball.ball_number
-              )
-              .join(
-                ", #"
-              )} ${
-              unavailable.length === 1
-                ? "is"
-                : "are"
-            } no longer available. Please refresh and choose again.`,
+          error: `Baseball${
+            unavailable.length === 1 ? "" : "s"
+          } #${unavailable
+            .map((ball) => ball.ball_number)
+            .join(", #")} ${
+            unavailable.length === 1 ? "is" : "are"
+          } no longer available. Please refresh and choose again.`,
         },
         409
       );
     }
 
-    const amountCents =
-      baseballs.reduce(
-        (sum, ball) =>
-          sum +
-          (
-            Number(
-              ball.amount_cents
-            ) ||
-            Number(
-              ball.ball_number
-            ) * 100
-          ),
-        0
-      );
+    /*
+     * STEP 4
+     * Calculate total donation.
+     */
+    const amountCents = baseballs.reduce(
+      (sum, ball) =>
+        sum +
+        (Number(ball.amount_cents) ||
+          Number(ball.ball_number) * 100),
+      0
+    );
 
     if (amountCents < 50) {
       return json(
         {
           success: false,
-          error:
-            "Invalid checkout amount.",
+          error: "Invalid checkout amount.",
         },
         400
       );
     }
 
-    const origin =
-      new URL(
-        request.url
-      ).origin;
+    /*
+     * STEP 5
+     * Build Stripe return URLs.
+     */
+    const origin = new URL(request.url).origin;
 
     const successUrl =
       `${origin}/fundraiser.html?player=${encodeURIComponent(
@@ -224,23 +224,17 @@ export async function onRequestPost({ request, env }) {
         playerKey
       )}&payment=cancelled`;
 
-    const params =
-      new URLSearchParams();
+    /*
+     * STEP 6
+     * Create Stripe checkout session.
+     */
+    const params = new URLSearchParams();
 
-    params.set(
-      "mode",
-      "payment"
-    );
+    params.set("mode", "payment");
 
-    params.set(
-      "success_url",
-      successUrl
-    );
+    params.set("success_url", successUrl);
 
-    params.set(
-      "cancel_url",
-      cancelUrl
-    );
+    params.set("cancel_url", cancelUrl);
 
     params.set(
       "line_items[0][price_data][currency]",
@@ -261,9 +255,7 @@ export async function onRequestPost({ request, env }) {
 
     params.set(
       "line_items[0][price_data][unit_amount]",
-      String(
-        amountCents
-      )
+      String(amountCents)
     );
 
     params.set(
@@ -271,16 +263,24 @@ export async function onRequestPost({ request, env }) {
       "1"
     );
 
+    /*
+     * Keep team_key in Stripe metadata.
+     * This is perfectly fine because Stripe metadata
+     * is separate from the players database table.
+     */
     params.set(
       "metadata[team_key]",
       "legends-cooperstown"
     );
 
     params.set(
+      "metadata[team_id]",
+      String(team.id)
+    );
+
+    params.set(
       "metadata[player_id]",
-      String(
-        player.id
-      )
+      String(player.id)
     );
 
     params.set(
@@ -295,17 +295,12 @@ export async function onRequestPost({ request, env }) {
 
     params.set(
       "metadata[player_number]",
-      String(
-        player.player_number ??
-          ""
-      )
+      String(player.player_number ?? "")
     );
 
     params.set(
       "metadata[baseball_numbers]",
-      baseballNumbers.join(
-        ","
-      )
+      baseballNumbers.join(",")
     );
 
     params.set(
@@ -315,63 +310,49 @@ export async function onRequestPost({ request, env }) {
 
     params.set(
       "metadata[anonymous]",
-      String(
-        anonymous
-      )
+      String(anonymous)
     );
 
-    const stripeResponse =
-      await fetch(
-        "https://api.stripe.com/v1/checkout/sessions",
-        {
-          method: "POST",
+    const stripeResponse = await fetch(
+      "https://api.stripe.com/v1/checkout/sessions",
+      {
+        method: "POST",
 
-          headers: {
-            authorization:
-              `Bearer ${env.STRIPE_SECRET_KEY}`,
+        headers: {
+          authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
 
-            "content-type":
-              "application/x-www-form-urlencoded",
+          "content-type":
+            "application/x-www-form-urlencoded",
 
-            accept:
-              "application/json",
-          },
+          accept: "application/json",
+        },
 
-          body:
-            params.toString(),
-        }
-      );
+        body: params.toString(),
+      }
+    );
 
-    const stripeText =
-      await stripeResponse.text();
+    const stripeText = await stripeResponse.text();
 
     let session;
 
     try {
-      session =
-        JSON.parse(
-          stripeText
-        );
+      session = JSON.parse(stripeText);
     } catch {
       return json(
         {
           success: false,
-          error:
-            `Stripe returned an invalid response: ${stripeText}`,
+          error: `Stripe returned an invalid response: ${stripeText}`,
         },
         500
       );
     }
 
-    if (
-      !stripeResponse.ok
-    ) {
+    if (!stripeResponse.ok) {
       return json(
         {
           success: false,
           error:
-            session?.error
-              ?.message ||
+            session?.error?.message ||
             "Unable to create Stripe checkout session.",
         },
         stripeResponse.status
@@ -380,12 +361,9 @@ export async function onRequestPost({ request, env }) {
 
     return json({
       success: true,
-      url:
-        session.url,
-      sessionId:
-        session.id,
+      url: session.url,
+      sessionId: session.id,
     });
-
   } catch (error) {
     console.error(
       "Create checkout error:",

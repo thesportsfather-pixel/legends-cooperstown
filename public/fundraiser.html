@@ -1264,13 +1264,11 @@ async function loadFundraiser(){
     playerSelect.value =
       currentPlayer.key;
 
-    const selectedOption =
-      playerSelect.options[
-        playerSelect.selectedIndex
-      ];
+    const selectedPlayerOption =
+  playerSelect.options[playerSelect.selectedIndex];
 
-    playerName.textContent =
-      selectedOption.dataset.name.toUpperCase();
+playerName.textContent =
+  selectedPlayerOption.dataset.name.toUpperCase();
 
     createBoard();
 
@@ -1298,7 +1296,6 @@ async function loadFundraiser(){
     loadingBoard =
       false;
   }
-}
 }
 
 

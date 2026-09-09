@@ -1264,8 +1264,11 @@ async function loadFundraiser(){
     playerSelect.value =
       currentPlayer.key;
 
-    playerName.textContent =
-      currentPlayer.name.toUpperCase();
+    const selectedPlayerOption =
+  playerSelect.options[playerSelect.selectedIndex];
+
+playerName.textContent =
+  selectedPlayerOption.dataset.name.toUpperCase();
 
     createBoard();
 
@@ -1580,10 +1583,13 @@ function updateDonationBox(){
       : selectedBalls.length +
         " Baseballs Selected";
 
-  donationDetail.textContent =
-    currentPlayer.name +
-    " • #" +
-    selectedBalls.join(", #");
+  const selectedPlayerOptionForDonation =
+  playerSelect.options[playerSelect.selectedIndex];
+
+donationDetail.textContent =
+  selectedPlayerOptionForDonation.dataset.name +
+  " • #" +
+  selectedBalls.join(", #");
 
   donationBox.classList.add(
     "active"

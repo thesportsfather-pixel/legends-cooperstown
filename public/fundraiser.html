@@ -851,12 +851,16 @@ body{
         Gian Conde
       </option>
 
-      <option value="luca-tumillo" data-name="Legends Team">
-        Legends Team
+      <option value="luca-tumillo" data-name="Luca Tumillo">
+        Luca Tumillo
       </option>
 
       <option value="erick-morales" data-name="Erick Morales">
         Erick Morales
+      </option>
+
+      <option value="jesus-torres" data-name="Jesus Torres">
+        Jesus Torres #00
       </option>
 
     </select>
@@ -1264,11 +1268,8 @@ async function loadFundraiser(){
     playerSelect.value =
       currentPlayer.key;
 
-    const selectedPlayerOption =
-  playerSelect.options[playerSelect.selectedIndex];
-
-playerName.textContent =
-  selectedPlayerOption.dataset.name.toUpperCase();
+    playerName.textContent =
+      currentPlayer.name.toUpperCase();
 
     createBoard();
 
@@ -1583,13 +1584,10 @@ function updateDonationBox(){
       : selectedBalls.length +
         " Baseballs Selected";
 
-  const selectedPlayerOptionForDonation =
-  playerSelect.options[playerSelect.selectedIndex];
-
-donationDetail.textContent =
-  selectedPlayerOptionForDonation.dataset.name +
-  " • #" +
-  selectedBalls.join(", #");
+  donationDetail.textContent =
+    currentPlayer.name +
+    " • #" +
+    selectedBalls.join(", #");
 
   donationBox.classList.add(
     "active"
